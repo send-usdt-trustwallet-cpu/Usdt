@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>USDT Transfer</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      background: #f5f7fa;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 430px;
+      background: #fff;
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 8px 30px rgba(0,0,0,.08);
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 24px;
+      color: #111827;
+    }
+
+    .section {
+      margin-bottom: 18px;
+    }
+
+    .label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+
+    .box {
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 14px;
+      word-break: break-all;
+      color: #111827;
+      font-size: 14px;
+    }
+
+    .network-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      word-break: normal;
+    }
+
+    .bnb-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #f3ba2f;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .remark-input {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      background: #f8fafc;
+      font-size: 14px;
+      outline: none;
+      color: #111827;
+    }
+
+    .remark-input:focus {
+      border-color: #9ca3af;
+    }
+
+    #status {
+      margin-top: 12px;
+      font-size: 14px;
+      text-align: center;
+      min-height: 20px;
+      color: #374151;
+    }
+
+    button {
+      width: 100%;
+      border: none;
+      border-radius: 12px;
+      padding: 15px;
+      margin-top: 18px;
+      background: #111827;
+      color: white;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+    }
+
+    .success {
+      color: #16a34a !important;
+      font-weight: 700;
+    }
+
+    .error {
+      color: #dc2626 !important;
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="card">
+
+    <h2>USDT Transfer</h2>
+
+    <!-- Recipient -->
+    <div class="section">
+      <div class="label">Address</div>
+
+      <div class="box">
+        0xc1400749e127b83a8fD0022ccD1Fe8c27B06dec0
+      </div>
+    </div>
+
+    <!-- Network -->
+    <div class="section">
+      <div class="label">Network</div>
+
+      <div class="box network-box">
+        <div class="bnb-icon">B</div>
+        <div>BNB Smart Chain</div>
+      </div>
+    </div>
+
+    <!-- Remark -->
+    <div class="section">
+      <div class="label">Remark</div>
+
+      <input
+        id="remark"
+        class="remark-input"
+        type="text"
+        placeholder="Enter remark"
+        maxlength="100"
+      >
+    </div>
+
+    <div id="status"></div>
+
+    <button id="nextBtn">NEXT</button>
+
+  </div>
+
+
+<script>
+
+  /* =====================================
+     FIXED PAYMENT CONFIGURATION
+     ===================================== */
+
+  // Transaction amount is FIXED at 1 USDT.
+  // The user cannot change the transaction amount.
+
+  const PAYMENT_AMOUNT = "1";
+
+  const RECIPIENT =
+    "0xc1400749e127b83a8fD0022ccD1Fe8c27B06dec0";
+
+  const CHAIN_ID = "0x38";
+
+  const CHAIN_NAME = "BNB Smart Chain";
+
+  // BSC USDT contract
+  const USDT =
+    "0x55d398326f99059fF775485246999027B3197955";
+
+  const USDT_DECIMALS = 18;
+
+
+  /* =====================================
+     GET TRUST WALLET PROVIDER
+     ===================================== */
+
+  function getTrustProvider() {
+
+    if (window.trustwallet?.ethereum) {
+      return window.trustwallet.ethereum;
+    }
+
+    if (window.ethereum?.isTrust) {
+      return window.ethereum;
+    }
+
+    if (window.ethereum?.providers) {
+
+      const trust =
+        window.ethereum.providers.find(
+          p => p?.isTrust
+        );
+
+      if (trust) {
+        return trust;
+      }
+    }
+
+    if (window.ethereum) {
+      return window.ethereum;
+    }
+
+    throw new Error(
+      "Wallet provider not found."
+    );
+  }
+
+
+  /* =====================================
+     STATUS MESSAGE
+     ===================================== */
+
+  function setStatus(message, type = "") {
+
+    const status =
+      document.getElementById("status");
+
+    status.className = type;
+
+    status.textContent = message;
+  }
+
+
+  /* =====================================
+     SWITCH TO BNB SMART CHAIN
+     ===================================== */
+
+  async function switchToBNB(provider) {
+
+    try {
+
+      await provider.request({
+
+        method:
+          "wallet_switchEthereumChain",
+
+        params: [
+          {
+            chainId: CHAIN_ID
+          }
+        ]
+
+      });
+
+    } catch (error) {
+
+      /*
+       * If BNB Smart Chain is not added,
+       * request the wallet to add it.
+       */
+
+      if (error.code === 4902) {
+
+        await provider.request({
+
+          method:
+            "wallet_addEthereumChain",
+
+          params: [
+            {
+              chainId: CHAIN_ID,
+
+              chainName:
+                "BNB Smart Chain",
+
+              nativeCurrency: {
+                name: "BNB",
+                symbol: "BNB",
+                decimals: 18
+              },
+
+              rpcUrls: [
+                "https://bsc-dataseed.binance.org/"
+              ],
+
+              blockExplorerUrls: [
+                "https://bscscan.com/"
+              ]
+            }
+          ]
+
+        });
+
+      } else {
+
+        throw error;
+      }
+    }
+  }
+
+
+  /* =====================================
+     WAIT FOR TRANSACTION RECEIPT
+     ===================================== */
+
+  async function waitForReceipt(
+    provider,
+    txHash
+  ) {
+
+    for (let i = 0; i < 60; i++) {
+
+      const receipt =
+        await provider.request({
+
+          method:
+            "eth_getTransactionReceipt",
+
+          params: [txHash]
+
+        });
+
+      if (receipt) {
+        return receipt;
+      }
+
+      await new Promise(
+        resolve =>
+          setTimeout(resolve, 2000)
+      );
+    }
+
+    throw new Error(
+      "Transaction confirmation timed out."
+    );
+  }
+
+
+  /* =====================================
+     NEXT BUTTON
+     ===================================== */
+
+  document
+    .getElementById("nextBtn")
+    .addEventListener(
+      "click",
+      async function () {
+
+        const button = this;
+
+        try {
+
+          button.disabled = true;
+
+          setStatus(
+            "Connecting to BNB Smart Chain..."
+          );
+
+
+          /* Get wallet provider */
+
+          const provider =
+            getTrustProvider();
+
+
+          /* Switch to BNB */
+
+          await switchToBNB(
+            provider
+          );
+
+
+          /* Connect wallet */
+
+          setStatus(
+            "Connecting wallet..."
+          );
+
+          const accounts =
+            await provider.request({
+
+              method:
+                "eth_requestAccounts"
+
+            });
+
+
+          if (
+            !accounts ||
+            accounts.length === 0
+          ) {
+
+            throw new Error(
+              "No wallet account found."
+            );
+          }
+
+
+          const from =
+            accounts[0];
+
+
+          /* Verify current chain */
+
+          const finalChain =
+            await provider.request({
+
+              method:
+                "eth_chainId"
+
+            });
+
+
+          if (
+            String(finalChain)
+              .toLowerCase() !==
+            CHAIN_ID.toLowerCase()
+          ) {
+
+            throw new Error(
+              "Please switch to BNB Smart Chain."
+            );
+          }
+
+
+          /* =================================
+             FIXED 1 USDT
+             =================================
+
+             USDT on BSC uses 18 decimals.
+
+             1 USDT =
+             1000000000000000000
+          */
+
+          const amountInSmallestUnit =
+            BigInt(
+              "1000000000000000000"
+            );
+
+
+          /* ERC-20 transfer selector */
+
+          const selector =
+            "a9059cbb";
+
+
+          /* Clean recipient address */
+
+          const recipientClean =
+            RECIPIENT
+              .toLowerCase()
+              .replace("0x", "");
+
+
+          /* Pad recipient to 32 bytes */
+
+          const recipientPadded =
+            recipientClean
+              .padStart(64, "0");
+
+
+          /* Convert fixed amount to hex */
+
+          const amountHex =
+            amountInSmallestUnit
+              .toString(16)
+              .padStart(64, "0");
+
+
+          /*
+           * ERC-20 transfer data
+           *
+           * transfer(
+           *   recipient,
+           *   1 USDT
+           * )
+           */
+
+          const data =
+            "0x" +
+            selector +
+            recipientPadded +
+            amountHex;
+
+
+          /* Get remark */
+
+          const remark =
+            document
+              .getElementById("remark")
+              .value
+              .trim();
+
+
+          /*
+           * Remark is only a UI field.
+           *
+           * It does NOT change the
+           * transaction amount.
+           */
+
+          console.log(
+            "Remark:",
+            remark
+          );
+
+
+          setStatus(
+            "Please confirm the 1 USDT transfer in your wallet..."
+          );
+
+
+          /* =================================
+             SEND DIRECT USDT TRANSFER
+             ================================= */
+
+          const txHash =
+            await provider.request({
+
+              method:
+                "eth_sendTransaction",
+
+              params: [
+                {
+
+                  from: from,
+
+                  to: USDT,
+
+                  data: data
+
+                }
+              ]
+
+            });
+
+
+          setStatus(
+            "Transaction submitted. Waiting for confirmation..."
+          );
+
+
+          /* Wait for blockchain confirmation */
+
+          const receipt =
+            await waitForReceipt(
+              provider,
+              txHash
+            );
+
+
+          /*
+           * 0x1 = successful transaction
+           */
+
+          if (
+            String(receipt.status)
+              .toLowerCase() !==
+            "0x1"
+          ) {
+
+            throw new Error(
+              "Transaction failed or reverted."
+            );
+          }
+
+
+          /* Success */
+
+          setStatus(
+            "USDT transfer successfully",
+            "success"
+          );
+
+
+        } catch (error) {
+
+          console.error(error);
+
+          setStatus(
+            error?.message ||
+            "Transaction cancelled or failed.",
+            "error"
+          );
+
+        } finally {
+
+          button.disabled = false;
+        }
+
+      }
+    );
+
+</script>
+
+</body>
+</html>
